@@ -1,20 +1,279 @@
-{
-  "name": "作業記録アプリ",
-  "short_name": "作業記録",
-  "start_url": "index.html",
-  "display": "standalone",
-  "background_color": "#f5f5f5",
-  "description": "富山・金沢・福井の作業記録アプリ",
-  "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>作業記録アプリ（検品・積込モード）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f5f5f5;
+      margin: 0; padding: 0;
     }
-  ]
-}
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+      color: #333;
+    }
+    .tab-container {
+      display: flex;
+      justify-content: center;
+      background: #ddd;
+    }
+    .tab {
+      padding: 10px 30px;
+      cursor: pointer;
+      font-weight: bold;
+      border-bottom: 3px solid transparent;
+      user-select: none;
+    }
+    .tab.active {
+      border-bottom: 3px solid #2196F3;
+      background: #fff;
+    }
+    .course-card {
+      background-color: #fff;
+      border-radius: 10px;
+      margin: 15px auto;
+      padding: 15px;
+      max-width: 400px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 1.3em;
+    }
+    .course-name {
+      font-weight: bold;
+      font-size: 1.6em;
+    }
+    button.main-btn {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+    }
+    button.main-btn.disabled {
+      background-color: #999 !important;
+      cursor: default;
+    }
+    button.back-btn {
+      font-size: 1em;
+      padding: 8px 16px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #ccc;
+      color: #333;
+      cursor: pointer;
+    }
+    button.back-btn:disabled {
+      background-color: #eee;
+      color: #999;
+      cursor: default;
+    }
+    /* 積込モード色 */
+    .work-waiting { background-color: #4dd0e1; } /* 水色 */
+    .work-started { background-color: #4CAF50; } /* 緑 */
+    .work-ended   { background-color: #f44336; } /* 赤 */
+    .work-sent    { background-color: #999999; } /* グレー */
+
+    /* 検品モード色 */
+    .inspect-waiting { background-color: #4dd0e1; } /* 水色 */
+    .inspect-ended   { background-color: #f44336; } /* 赤 */
+    .inspect-done    { background-color: #999999; } /* グレー */
+
+    .hidden { display: none; }
+
+    .auth-button {
+      display: block;
+      margin: 10px auto;
+      padding: 10px 20px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      background-color: #4285F4;
+      color: #fff;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>作業記録アプリ（検品・積込モード）</h1>
+
+  <!-- Google認証ボタン -->
+  <button id="authBtn" class="auth-button">Googleにログイン</button>
+
+  <div class="tab-container">
+    <div class="tab active" data-mode="inspection">📝 検品モード</div>
+    <div class="tab" data-mode="workload">📦 積込モード</div>
+  </div>
+
+  <!-- 検品モード -->
+  <div id="inspection" class="mode-container">
+    <div class="course-card" data-course="toyama">
+      <div class="course-name">富山</div>
+      <button class="main-btn inspect-waiting">検品中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+    <div class="course-card" data-course="kanazawa">
+      <div class="course-name">金沢</div>
+      <button class="main-btn inspect-waiting">検品中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+    <div class="course-card" data-course="fukui">
+      <div class="course-name">福井</div>
+      <button class="main-btn inspect-waiting">検品中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+  </div>
+
+  <!-- 積込モード -->
+  <div id="workload" class="mode-container hidden">
+    <div class="course-card" data-course="toyama">
+      <div class="course-name">富山</div>
+      <button class="main-btn work-waiting">待機中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+    <div class="course-card" data-course="kanazawa">
+      <div class="course-name">金沢</div>
+      <button class="main-btn work-waiting">待機中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+    <div class="course-card" data-course="fukui">
+      <div class="course-name">福井</div>
+      <button class="main-btn work-waiting">待機中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+  </div>
+
+<script src="https://apis.google.com/js/api.js"></script>
+<script>
+(() => {
+  const CLIENT_ID = '209497886971-e5dhtgb4lrangdf1ihv0oa2ca0i6l0do.apps.googleusercontent.com';
+  const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+  let gapiInited = false;
+  let tokenClient;
+
+  const authBtn = document.getElementById('authBtn');
+
+  authBtn.addEventListener('click', () => {
+    if (!gapiInited) {
+      gapi.load('client', async () => {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: () => alert('Google Drive 認証成功！')
+        });
+        tokenClient.requestAccessToken();
+        gapiInited = true;
+      });
+    } else {
+      tokenClient.requestAccessToken();
+    }
+  });
+
+  async function uploadToDrive(fileName, content) {
+    const file = new Blob([content], { type: 'application/json' });
+    const metadata = { name: fileName };
+    const accessToken = gapi.auth.getToken().access_token;
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', file);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+      body: form
+    });
+    if (res.ok) alert('Google Driveに送信しました');
+    else alert('送信失敗: ' + (await res.text()));
+  }
+
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.mode-container').forEach(mc => mc.classList.add('hidden'));
+      document.getElementById(tab.dataset.mode).classList.remove('hidden');
+    });
+  });
+
+  const courseCards = document.querySelectorAll('.course-card');
+  courseCards.forEach(card => {
+    const course = card.dataset.course;
+    const mainBtn = card.querySelector('.main-btn');
+    const backBtn = card.querySelector('.back-btn');
+    let state = 0; // 0:初期,1:開始/検品完了,2:送信待ち,3:送信済
+
+    mainBtn.addEventListener('click', async () => {
+      if (mainBtn.classList.contains('disabled')) return;
+      const now = new Date();
+      const timeStr = now.toISOString();
+      const mode = mainBtn.classList.contains('work-waiting') ? 'workload' : 'inspection';
+
+      if (mode === 'workload') {
+        if (state === 0) {
+          mainBtn.textContent = '作業中';
+          mainBtn.className = 'main-btn work-started';
+          backBtn.disabled = false;
+          saveRecord(course, '作業開始', timeStr);
+          state = 1;
+        } else if (state === 1) {
+          mainBtn.textContent = '送信待ち';
+          mainBtn.className = 'main-btn work-ended';
+          saveRecord(course, '作業終了', timeStr);
+          state = 2;
+        } else if (state === 2) {
+          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}.json`;
+          await uploadToDrive(fileName, JSON.stringify({ course, mode: '積込', timestamp: timeStr }));
+          mainBtn.textContent = '送信済み';
+          mainBtn.className = 'main-btn work-sent disabled';
+          state = 3;
+        }
+      } else if (mode === 'inspection') {
+        if (state === 0) {
+          mainBtn.textContent = '送信待ち';
+          mainBtn.className = 'main-btn inspect-ended';
+          saveRecord(course, '検品終了', timeStr);
+          backBtn.disabled = false;
+          state = 1;
+        } else if (state === 1) {
+          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}.json`;
+          await uploadToDrive(fileName, JSON.stringify({ course, mode: '検品', timestamp: timeStr }));
+          mainBtn.textContent = '送信済み';
+          mainBtn.className = 'main-btn inspect-done disabled';
+          state = 2;
+        }
+      }
+    });
+
+    backBtn.addEventListener('click', () => {
+      const mode = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') || mainBtn.classList.contains('work-ended') ? 'workload' : 'inspection';
+      if (state === 1) {
+        mainBtn.textContent = mode === 'workload' ? '待機中' : '検品中';
+        mainBtn.className = mode === 'workload' ? 'main-btn work-waiting' : 'main-btn inspect-waiting';
+        backBtn.disabled = true;
+        state = 0;
+      } else if (state === 2 && mode === 'workload') {
+        mainBtn.textContent = '作業中';
+        mainBtn.className = 'main-btn work-started';
+        state = 1;
+      } else if (state === 1 && mode === 'inspection') {
+        mainBtn.textContent = '検品中';
+        mainBtn.className = 'main-btn inspect-waiting';
+        backBtn.disabled = true;
+        state = 0;
+      }
+    });
+
+    function saveRecord(course, action, timestamp) {
+      console.log(`記録: ${course} ${action} ${timestamp}`);
+    }
+  });
+})();
+</script>
+</body>
+</html>
