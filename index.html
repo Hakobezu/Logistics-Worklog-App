@@ -8,8 +8,7 @@
     body {
       font-family: sans-serif;
       background: #f5f5f5;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
     }
     h1 {
       text-align: center;
@@ -155,7 +154,6 @@
 (() => {
   const CLIENT_ID = '209497886971-e5dhtgb4lrangdf1ihv0oa2ca0i6l0do.apps.googleusercontent.com';
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-
   let gapiInited = false;
   let tokenClient;
 
@@ -178,24 +176,19 @@
   });
 
   async function uploadToDrive(fileName, content) {
-    try {
-      const file = new Blob([content], { type: 'application/json' });
-      const metadata = { name: fileName };
-      const accessToken = gapi.auth.getToken().access_token;
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', file);
-      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
-        body: form
-      });
-      if (res.ok) alert('Google Driveに送信しました');
-      else alert('送信失敗: ' + (await res.text()));
-    } catch (e) {
-      console.error('Upload failed', e);
-      alert('送信中にエラーが発生しました');
-    }
+    const file = new Blob([content], { type: 'application/json' });
+    const metadata = { name: fileName };
+    const accessToken = gapi.auth.getToken().access_token;
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', file);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+      body: form
+    });
+    if (res.ok) alert('Google Driveに送信しました');
+    else alert('送信失敗: ' + (await res.text()));
   }
 
   const tabs = document.querySelectorAll('.tab');
@@ -213,14 +206,13 @@
     const course = card.dataset.course;
     const mainBtn = card.querySelector('.main-btn');
     const backBtn = card.querySelector('.back-btn');
-    let state = 0;
+    let state = 0; // 0:初期,1:開始/検品完了,2:送信待ち,3:送信済
 
     mainBtn.addEventListener('click', async () => {
       if (mainBtn.classList.contains('disabled')) return;
-
       const now = new Date();
       const timeStr = now.toISOString();
-      const mode = card.closest('.mode-container').id;
+      const mode = mainBtn.classList.contains('work-waiting') ? 'workload' : 'inspection';
 
       if (mode === 'workload') {
         if (state === 0) {
@@ -259,7 +251,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      const mode = card.closest('.mode-container').id;
+      const mode = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') || mainBtn.classList.contains('work-ended') ? 'workload' : 'inspection';
       if (state === 1) {
         mainBtn.textContent = mode === 'workload' ? '待機中' : '検品中';
         mainBtn.className = mode === 'workload' ? 'main-btn work-waiting' : 'main-btn inspect-waiting';
