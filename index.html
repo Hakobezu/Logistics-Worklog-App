@@ -139,10 +139,10 @@
   const gasApiUrl = 'https://script.google.com/macros/s/AKfycbxwb63SmeOYWG55m3JzbxLvrHpwMJtFbAt_jUxX_Qy5wuH-dZMNZxa9EkoVP1MfiUgD/exec';
 
   async function uploadToDrive(fileName, content) {
+    alert('📤 Google Drive送信開始');
     const payload = {
-      course: fileName.replace('.json', ''),
-      timestamp: new Date().toISOString(),
-      content: JSON.parse(content),
+      fileName: fileName,
+      data: JSON.parse(content),
     };
 
     try {
@@ -152,14 +152,18 @@
         body: JSON.stringify(payload)
       });
 
-      const result = await res.json();
-      if (result.status === 'success') {
-        alert('✅ Google Driveに送信しました');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.status === 'success') {
+          alert('✅ Google Driveに送信しました');
+        } else {
+          alert('❌ 送信失敗: ' + result.message);
+        }
       } else {
-        alert('❌ 送信失敗: ' + result.message);
+        alert('❌ サーバーエラー: ' + res.status);
       }
     } catch (err) {
-      alert('⚠ エラー発生: ' + err.message);
+      alert('⚠ ネットワークエラー: ' + err.message);
     }
   }
 
