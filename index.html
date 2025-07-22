@@ -143,6 +143,7 @@
     try {
       const res = await fetch(GAS_URL, {
         method: 'POST',
+        mode: 'cors', // CORS対応
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileName: fileName,
