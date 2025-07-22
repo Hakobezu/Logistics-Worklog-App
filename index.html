@@ -98,17 +98,17 @@
 
   <!-- 検品モード -->
   <div id="inspection" class="mode-container">
-    <div class="course-card" data-course="toyama">
+    <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
       <button class="main-btn inspect-waiting">検品中</button>
       <button class="back-btn" disabled>↩ 戻る</button>
     </div>
-    <div class="course-card" data-course="kanazawa">
+    <div class="course-card" data-course="金沢">
       <div class="course-name">金沢</div>
       <button class="main-btn inspect-waiting">検品中</button>
       <button class="back-btn" disabled>↩ 戻る</button>
     </div>
-    <div class="course-card" data-course="fukui">
+    <div class="course-card" data-course="福井">
       <div class="course-name">福井</div>
       <button class="main-btn inspect-waiting">検品中</button>
       <button class="back-btn" disabled>↩ 戻る</button>
@@ -117,17 +117,17 @@
 
   <!-- 積込モード -->
   <div id="workload" class="mode-container hidden">
-    <div class="course-card" data-course="toyama">
+    <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
       <button class="main-btn work-waiting">待機中</button>
       <button class="back-btn" disabled>↩ 戻る</button>
     </div>
-    <div class="course-card" data-course="kanazawa">
+    <div class="course-card" data-course="金沢">
       <div class="course-name">金沢</div>
       <button class="main-btn work-waiting">待機中</button>
       <button class="back-btn" disabled>↩ 戻る</button>
     </div>
-    <div class="course-card" data-course="fukui">
+    <div class="course-card" data-course="福井">
       <div class="course-name">福井</div>
       <button class="main-btn work-waiting">待機中</button>
       <button class="back-btn" disabled>↩ 戻る</button>
@@ -136,34 +136,29 @@
 
 <script>
 (() => {
-  const gasApiUrl = 'https://script.google.com/macros/s/AKfycbxwb63SmeOYWG55m3JzbxLvrHpwMJtFbAt_jUxX_Qy5wuH-dZMNZxa9EkoVP1MfiUgD/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxwb63SmeOYWG55m3JzbxLvrHpwMJtFbAt_jUxX_Qy5wuH-dZMNZxa9EkoVP1MfiUgD/exec';
 
   async function uploadToDrive(fileName, content) {
-    alert('📤 Google Drive送信開始');
-    const payload = {
-      fileName: fileName,
-      data: JSON.parse(content),
-    };
-
+    console.log('📤 Google Drive送信開始...');
     try {
-      const res = await fetch(gasApiUrl, {
+      const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          fileName: fileName,
+          data: JSON.parse(content)
+        })
       });
-
-      if (res.ok) {
-        const result = await res.json();
-        if (result.status === 'success') {
-          alert('✅ Google Driveに送信しました');
-        } else {
-          alert('❌ 送信失敗: ' + result.message);
-        }
+      const result = await res.json();
+      console.log('✅ Google Drive応答:', result);
+      if (result.status === 'success') {
+        alert('Google Driveに送信しました！');
       } else {
-        alert('❌ サーバーエラー: ' + res.status);
+        alert('送信失敗: ' + result.message);
       }
     } catch (err) {
-      alert('⚠ ネットワークエラー: ' + err.message);
+      console.error('❌ エラー:', err);
+      alert('ネットワークエラー: ' + err.message);
     }
   }
 
@@ -182,13 +177,13 @@
     const course = card.dataset.course;
     const mainBtn = card.querySelector('.main-btn');
     const backBtn = card.querySelector('.back-btn');
-    let state = 0; // 0:初期,1:開始/検品完了,2:送信待ち,3:送信済
+    let state = 0; // 0:初期,1:開始,2:送信待ち,3:送信済
 
     mainBtn.addEventListener('click', async () => {
       if (mainBtn.classList.contains('disabled')) return;
       const now = new Date();
       const timeStr = now.toISOString();
-      const mode = mainBtn.classList.contains('work-waiting') ? 'workload' : 'inspection';
+      const mode = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') ? 'workload' : 'inspection';
 
       if (mode === 'workload') {
         if (state === 0) {
@@ -199,12 +194,14 @@
         } else if (state === 1) {
           mainBtn.textContent = '送信待ち';
           mainBtn.className = 'main-btn work-ended';
+          backBtn.disabled = false;
           state = 2;
         } else if (state === 2) {
-          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}.json`;
-          await uploadToDrive(fileName, JSON.stringify({ course, mode: '積込', timestamp: timeStr }));
+          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}_積込.json`;
+          await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '積込', timestamp: timeStr }));
           mainBtn.textContent = '送信済み';
           mainBtn.className = 'main-btn work-sent disabled';
+          backBtn.disabled = true;
           state = 3;
         }
       } else if (mode === 'inspection') {
@@ -214,10 +211,11 @@
           backBtn.disabled = false;
           state = 1;
         } else if (state === 1) {
-          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}.json`;
-          await uploadToDrive(fileName, JSON.stringify({ course, mode: '検品', timestamp: timeStr }));
+          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}_検品.json`;
+          await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '検品', timestamp: timeStr }));
           mainBtn.textContent = '送信済み';
           mainBtn.className = 'main-btn inspect-done disabled';
+          backBtn.disabled = true;
           state = 2;
         }
       }
@@ -230,15 +228,11 @@
         mainBtn.className = mode === 'workload' ? 'main-btn work-waiting' : 'main-btn inspect-waiting';
         backBtn.disabled = true;
         state = 0;
-      } else if (state === 2 && mode === 'workload') {
-        mainBtn.textContent = '作業中';
-        mainBtn.className = 'main-btn work-started';
+      } else if (state === 2) {
+        mainBtn.textContent = mode === 'workload' ? '作業中' : '送信待ち';
+        mainBtn.className = mode === 'workload' ? 'main-btn work-started' : 'main-btn inspect-ended';
+        backBtn.disabled = false;
         state = 1;
-      } else if (state === 1 && mode === 'inspection') {
-        mainBtn.textContent = '検品中';
-        mainBtn.className = 'main-btn inspect-waiting';
-        backBtn.disabled = true;
-        state = 0;
       }
     });
   });
