@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -136,16 +137,12 @@
 
 <script>
 (() => {
-  // 👇 ここにあなたのGASデプロイURL
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbw_MazVuaw3RYpkpPq7U7fJc598FEeZ5rrjr8Z1l2hoZ0MvBCHYoElo2-zcuPZPGuEW/exec';
-
-  // CORS回避用プロキシ
-  const PROXY_URL = 'https://corsproxy.io/?';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyMbm8PkGdgdvmusdXAeo8YIVAFpnL21BniOaZB0aLqpJQTLByXybh7i9NWASZDtdda/exec';
 
   async function uploadToDrive(fileName, content) {
     console.log('📤 Google Drive送信開始...');
     try {
-      const res = await fetch(PROXY_URL + GAS_URL, {
+      const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
