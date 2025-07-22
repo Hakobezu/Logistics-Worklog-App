@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -150,16 +149,20 @@
           data: JSON.parse(content)
         })
       });
+      if (!res.ok) throw new Error('HTTPエラー: ' + res.status);
       const result = await res.json();
       console.log('✅ Google Drive応答:', result);
       if (result.status === 'success') {
         alert('Google Driveに送信しました！');
+        return true;
       } else {
         alert('送信失敗: ' + result.message);
+        return false;
       }
     } catch (err) {
       console.error('❌ エラー:', err);
       alert('ネットワークエラー: ' + err.message);
+      return false;
     }
   }
 
@@ -199,11 +202,14 @@
           state = 2;
         } else if (state === 2) {
           const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}_積込.json`;
-          await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '積込', timestamp: timeStr }));
-          mainBtn.textContent = '送信済み';
-          mainBtn.className = 'main-btn work-sent disabled';
-          backBtn.disabled = true;
-          state = 3;
+          const success = await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '積込', timestamp: timeStr }));
+          if (success) {
+            mainBtn.textContent = '送信済み';
+            mainBtn.className = 'main-btn work-sent disabled';
+            backBtn.disabled = true;
+            state = 3;
+          }
+          // 失敗時は何もしない（状態変更なし）
         }
       } else if (mode === 'inspection') {
         if (state === 0) {
@@ -213,11 +219,14 @@
           state = 1;
         } else if (state === 1) {
           const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}_検品.json`;
-          await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '検品', timestamp: timeStr }));
-          mainBtn.textContent = '送信済み';
-          mainBtn.className = 'main-btn inspect-done disabled';
-          backBtn.disabled = true;
-          state = 2;
+          const success = await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '検品', timestamp: timeStr }));
+          if (success) {
+            mainBtn.textContent = '送信済み';
+            mainBtn.className = 'main-btn inspect-done disabled';
+            backBtn.disabled = true;
+            state = 2;
+          }
+          // 失敗時は何もしない（状態変更なし）
         }
       }
     });
