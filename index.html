@@ -7,8 +7,9 @@
   <style>
     body {
       font-family: sans-serif;
-      background: #f5f5f5;
-      margin: 0; padding: 0;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s;
     }
     h1 {
       text-align: center;
@@ -74,6 +75,7 @@
       color: #999;
       cursor: default;
     }
+
     /* 積込モード色 */
     .work-waiting { background-color: #4dd0e1; } /* 水色 */
     .work-started { background-color: #4CAF50; } /* 緑 */
@@ -81,7 +83,7 @@
     .work-sent    { background-color: #999999; } /* グレー */
 
     /* 検品モード色 */
-    .inspect-waiting { background-color: #4dd0e1; } /* 水色 */
+    .inspect-waiting { background-color: #ffb6c1; } /* 薄いピンク */
     .inspect-ended   { background-color: #f44336; } /* 赤 */
     .inspect-done    { background-color: #999999; } /* グレー */
 
@@ -136,7 +138,7 @@
 
 <script>
 (() => {
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbx3r2RDggY-Hm-cQqp5jvsXJLMbGdTui5bIXOhTFKPaqHJvsUZM2RndswslfoSOnDw3/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzPesYDZIYK74lob_ZGp6H6ETWZDenx9yKlS6DQJazJDE0Ygl4ciS_XfMe0eIDC9V23/exec';
 
   async function uploadToDrive(fileName, content) {
     console.log('📤 Google Drive送信開始...');
@@ -147,7 +149,8 @@
         body: JSON.stringify({
           fileName: fileName,
           data: JSON.parse(content)
-        })
+        }),
+        credentials: 'include'
       });
       const result = await res.json();
       console.log('✅ Google Drive応答:', result);
@@ -169,6 +172,7 @@
       tab.classList.add('active');
       document.querySelectorAll('.mode-container').forEach(mc => mc.classList.add('hidden'));
       document.getElementById(tab.dataset.mode).classList.remove('hidden');
+      document.body.style.backgroundColor = (tab.dataset.mode === 'inspection') ? '#ffe4e1' : '#e0f7fa';
     });
   });
 
@@ -177,7 +181,7 @@
     const course = card.dataset.course;
     const mainBtn = card.querySelector('.main-btn');
     const backBtn = card.querySelector('.back-btn');
-    let state = 0; // 0:初期,1:開始,2:送信待ち,3:送信済
+    let state = 0;
 
     mainBtn.addEventListener('click', async () => {
       if (mainBtn.classList.contains('disabled')) return;
