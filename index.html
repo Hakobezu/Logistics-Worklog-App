@@ -5,36 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>作業記録アプリ（検品・積込モード）</title>
   <style>
-    body { font-family: sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
-    h1 { text-align: center; margin: 20px 0; color: #333; }
-    .tab-container { display: flex; justify-content: center; background: #ddd; }
+    body {
+      font-family: sans-serif;
+      background: #f5f5f5;
+      margin: 0; padding: 0;
+    }
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+      color: #333;
+    }
+    .tab-container {
+      display: flex;
+      justify-content: center;
+      background: #ddd;
+    }
     .tab {
-      padding: 10px 30px; cursor: pointer; font-weight: bold;
-      border-bottom: 3px solid transparent; user-select: none;
+      padding: 10px 30px;
+      cursor: pointer;
+      font-weight: bold;
+      border-bottom: 3px solid transparent;
+      user-select: none;
     }
-    .tab.active { border-bottom: 3px solid #2196F3; background: #fff; }
+    .tab.active {
+      border-bottom: 3px solid #2196F3;
+      background: #fff;
+    }
     .course-card {
-      background-color: #fff; border-radius: 10px; margin: 15px auto; padding: 15px;
-      max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex;
-      align-items: center; justify-content: space-between; font-size: 1.3em;
+      background-color: #fff;
+      border-radius: 10px;
+      margin: 15px auto;
+      padding: 15px;
+      max-width: 400px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 1.3em;
     }
-    .course-name { font-weight: bold; font-size: 1.6em; }
+    .course-name {
+      font-weight: bold;
+      font-size: 1.6em;
+    }
     button.main-btn {
-      font-size: 1.2em; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer;
+      font-size: 1.2em;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
     }
-    button.main-btn.disabled { background-color: #999 !important; cursor: default; }
+    button.main-btn.disabled {
+      background-color: #999 !important;
+      cursor: default;
+    }
     button.back-btn {
-      font-size: 1em; padding: 8px 16px; margin-left: 10px; border: none;
-      border-radius: 8px; background-color: #ccc; color: #333; cursor: pointer;
+      font-size: 1em;
+      padding: 8px 16px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #ccc;
+      color: #333;
+      cursor: pointer;
     }
-    button.back-btn:disabled { background-color: #eee; color: #999; cursor: default; }
-    .work-waiting { background-color: #4dd0e1; }
-    .work-started { background-color: #4CAF50; }
-    .work-ended { background-color: #f44336; }
-    .work-sent { background-color: #999999; }
-    .inspect-waiting { background-color: #4dd0e1; }
-    .inspect-ended { background-color: #f44336; }
-    .inspect-done { background-color: #999999; }
+    button.back-btn:disabled {
+      background-color: #eee;
+      color: #999;
+      cursor: default;
+    }
+    /* 積込モード色 */
+    .work-waiting { background-color: #4dd0e1; } /* 水色 */
+    .work-started { background-color: #4CAF50; } /* 緑 */
+    .work-ended   { background-color: #f44336; } /* 赤 */
+    .work-sent    { background-color: #999999; } /* グレー */
+
+    /* 検品モード色 */
+    .inspect-waiting { background-color: #4dd0e1; } /* 水色 */
+    .inspect-ended   { background-color: #f44336; } /* 赤 */
+    .inspect-done    { background-color: #999999; } /* グレー */
+
     .hidden { display: none; }
   </style>
 </head>
@@ -86,7 +136,7 @@
 
 <script>
 (() => {
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwaiqdvsriWQQCBdkid1qk1O659lu2wrZMBYiOSDiGj8aK8aj7s4SmGobaZtdbXx0fd/exec';
+  const GAS_URL = '【ここにGASのURLを入れる】';
 
   async function uploadToDrive(fileName, content) {
     console.log('📤 Google Drive送信開始...');
@@ -99,12 +149,6 @@
           data: JSON.parse(content)
         })
       });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`サーバーエラー: ${text}`);
-      }
-
       const result = await res.json();
       console.log('✅ Google Drive応答:', result);
       if (result.status === 'success') {
@@ -133,7 +177,7 @@
     const course = card.dataset.course;
     const mainBtn = card.querySelector('.main-btn');
     const backBtn = card.querySelector('.back-btn');
-    let state = 0;
+    let state = 0; // 0:初期,1:開始,2:送信待ち,3:送信済
 
     mainBtn.addEventListener('click', async () => {
       if (mainBtn.classList.contains('disabled')) return;
