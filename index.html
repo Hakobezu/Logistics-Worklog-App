@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>作業記録アプリ（検品・積込モード）</title>
   <style>
+    /* あなたの元のスタイルをここにそのまま貼ってください */
     body {
       font-family: sans-serif;
       margin: 0;
@@ -94,12 +95,12 @@
   <h1>作業記録アプリ（検品・積込モード）</h1>
 
   <div class="tab-container">
-    <div class="tab active" data-mode="inspection">📝 検品モード</div>
-    <div class="tab" data-mode="workload">📦 積込モード</div>
+    <div class="tab" data-mode="inspection">📝 検品モード</div>
+    <div class="tab active" data-mode="workload">📦 積込モード</div>
   </div>
 
   <!-- 検品モード -->
-  <div id="inspection" class="mode-container">
+  <div id="inspection" class="mode-container hidden">
     <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
       <button class="main-btn inspect-waiting">検品中</button>
@@ -118,7 +119,7 @@
   </div>
 
   <!-- 積込モード -->
-  <div id="workload" class="mode-container hidden">
+  <div id="workload" class="mode-container">
     <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
       <button class="main-btn work-waiting">待機中</button>
@@ -138,31 +139,14 @@
 
 <script>
 (() => {
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzPesYDZIYK74lob_ZGp6H6ETWZDenx9yKlS6DQJazJDE0Ygl4ciS_XfMe0eIDC9V23/exec';
-
-  async function uploadToDrive(fileName, content) {
-    console.log('📤 Google Drive送信開始...');
-    try {
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: fileName,
-          data: JSON.parse(content)
-        }),
-        credentials: 'include'
-      });
-      const result = await res.json();
-      console.log('✅ Google Drive応答:', result);
-      if (result.status === 'success') {
-        alert('Google Driveに送信しました！');
-      } else {
-        alert('送信失敗: ' + result.message);
-      }
-    } catch (err) {
-      console.error('❌ エラー:', err);
-      alert('ネットワークエラー: ' + err.message);
-    }
+  // Google Apps Scriptサーバー側のsaveRecordを呼ぶ関数
+  async function uploadToDrive(record) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        .saveRecord(record);
+    });
   }
 
   const tabs = document.querySelectorAll('.tab');
@@ -201,12 +185,21 @@
           backBtn.disabled = false;
           state = 2;
         } else if (state === 2) {
-          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}_積込.json`;
-          await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '積込', timestamp: timeStr }));
-          mainBtn.textContent = '送信済み';
-          mainBtn.className = 'main-btn work-sent disabled';
-          backBtn.disabled = true;
-          state = 3;
+          const record = { course: course, mode: '積込', timestamp: timeStr };
+          try {
+            const result = await uploadToDrive(record);
+            if (result.status === 'success') {
+              alert('Google Driveに送信しました！');
+              mainBtn.textContent = '送信済み';
+              mainBtn.className = 'main-btn work-sent disabled';
+              backBtn.disabled = true;
+              state = 3;
+            } else {
+              alert('送信失敗: ' + result.message);
+            }
+          } catch (err) {
+            alert('送信時エラー: ' + err.message);
+          }
         }
       } else if (mode === 'inspection') {
         if (state === 0) {
@@ -215,12 +208,21 @@
           backBtn.disabled = false;
           state = 1;
         } else if (state === 1) {
-          const fileName = `${now.toISOString().replace(/[:.]/g, '-')}_${course}_検品.json`;
-          await uploadToDrive(fileName, JSON.stringify({ course: course, mode: '検品', timestamp: timeStr }));
-          mainBtn.textContent = '送信済み';
-          mainBtn.className = 'main-btn inspect-done disabled';
-          backBtn.disabled = true;
-          state = 2;
+          const record = { course: course, mode: '検品', timestamp: timeStr };
+          try {
+            const result = await uploadToDrive(record);
+            if (result.status === 'success') {
+              alert('Google Driveに送信しました！');
+              mainBtn.textContent = '送信済み';
+              mainBtn.className = 'main-btn inspect-done disabled';
+              backBtn.disabled = true;
+              state = 2;
+            } else {
+              alert('送信失敗: ' + result.message);
+            }
+          } catch (err) {
+            alert('送信時エラー: ' + err.message);
+          }
         }
       }
     });
@@ -240,6 +242,9 @@
       }
     });
   });
+
+  // 最初に積込モードを表示する
+  document.querySelector('.tab[data-mode="workload"]').click();
 })();
 </script>
 </body>
