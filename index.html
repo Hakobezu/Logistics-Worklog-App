@@ -75,13 +75,18 @@
       color: #999;
       cursor: default;
     }
+
+    /* 積込モード色 */
     .work-waiting { background-color: #4dd0e1; }
     .work-started { background-color: #4CAF50; }
     .work-ended   { background-color: #f44336; }
     .work-sent    { background-color: #999999; }
+
+    /* 検品モード色 */
     .inspect-waiting { background-color: #ffb6c1; }
     .inspect-ended   { background-color: #f44336; }
     .inspect-done    { background-color: #999999; }
+
     .hidden { display: none; }
   </style>
 </head>
@@ -89,27 +94,8 @@
   <h1>作業記録アプリ（検品・積込モード）</h1>
 
   <div class="tab-container">
-    <div class="tab" data-mode="inspection">📝 検品モード</div>
     <div class="tab active" data-mode="workload">📦 積込モード</div>
-  </div>
-
-  <!-- 検品モード -->
-  <div id="inspection" class="mode-container hidden">
-    <div class="course-card" data-course="富山">
-      <div class="course-name">富山</div>
-      <button class="main-btn inspect-waiting">検品中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-    <div class="course-card" data-course="金沢">
-      <div class="course-name">金沢</div>
-      <button class="main-btn inspect-waiting">検品中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-    <div class="course-card" data-course="福井">
-      <div class="course-name">福井</div>
-      <button class="main-btn inspect-waiting">検品中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
+    <div class="tab" data-mode="inspection">📝 検品モード</div>
   </div>
 
   <!-- 積込モード -->
@@ -131,14 +117,35 @@
     </div>
   </div>
 
+  <!-- 検品モード -->
+  <div id="inspection" class="mode-container hidden">
+    <div class="course-card" data-course="富山">
+      <div class="course-name">富山</div>
+      <button class="main-btn inspect-waiting">検品中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+    <div class="course-card" data-course="金沢">
+      <div class="course-name">金沢</div>
+      <button class="main-btn inspect-waiting">検品中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+    <div class="course-card" data-course="福井">
+      <div class="course-name">福井</div>
+      <button class="main-btn inspect-waiting">検品中</button>
+      <button class="back-btn" disabled>↩ 戻る</button>
+    </div>
+  </div>
+
 <script>
 (() => {
-  async function uploadToDrive(record) {
+  const records = {};  // 各コースごとに配列で管理
+
+  function uploadToDrive(recordList) {
     return new Promise((resolve, reject) => {
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler(reject)
-        .saveRecord(record);
+        .saveRecord(recordList);
     });
   }
 
@@ -159,34 +166,29 @@
     const mainBtn = card.querySelector('.main-btn');
     const backBtn = card.querySelector('.back-btn');
     let state = 0;
+    records[course] = [];
 
     mainBtn.addEventListener('click', async () => {
       if (mainBtn.classList.contains('disabled')) return;
+      const now = new Date().toISOString();
+      const isWorkload = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') || mainBtn.classList.contains('work-ended');
 
-      const now = new Date();
-      const timeStr = now.toISOString();
-      const parentContainer = card.closest('.mode-container');
-      const mode = parentContainer.id === 'workload' ? 'workload' : 'inspection';
-
-      console.log(`クリックされたコース: ${course}, モード: ${mode}, 現在の状態: ${state}`);
-
-      if (mode === 'workload') {
+      if (isWorkload) {
         if (state === 0) {
+          records[course].push({ mode: '積込', course, action: '開始', timestamp: now });
           mainBtn.textContent = '作業中';
           mainBtn.className = 'main-btn work-started';
           backBtn.disabled = false;
           state = 1;
         } else if (state === 1) {
+          records[course].push({ mode: '積込', course, action: '終了', timestamp: now });
           mainBtn.textContent = '送信待ち';
           mainBtn.className = 'main-btn work-ended';
           backBtn.disabled = false;
           state = 2;
         } else if (state === 2) {
-          const record = { course: course, mode: '積込', timestamp: timeStr };
-          console.log('送信データ:', record);
           try {
-            const result = await uploadToDrive(record);
-            console.log('送信結果:', result);
+            const result = await uploadToDrive(records[course]);
             if (result.status === 'success') {
               alert('Google Driveに送信しました！');
               mainBtn.textContent = '送信済み';
@@ -197,22 +199,19 @@
               alert('送信失敗: ' + result.message);
             }
           } catch (err) {
-            console.error('送信時エラー:', err);
             alert('送信時エラー: ' + err.message);
           }
         }
-      } else if (mode === 'inspection') {
+      } else {
         if (state === 0) {
+          records[course].push({ mode: '検品', course, action: '終了', timestamp: now });
           mainBtn.textContent = '送信待ち';
           mainBtn.className = 'main-btn inspect-ended';
           backBtn.disabled = false;
           state = 1;
         } else if (state === 1) {
-          const record = { course: course, mode: '検品', timestamp: timeStr };
-          console.log('送信データ:', record);
           try {
-            const result = await uploadToDrive(record);
-            console.log('送信結果:', result);
+            const result = await uploadToDrive(records[course]);
             if (result.status === 'success') {
               alert('Google Driveに送信しました！');
               mainBtn.textContent = '送信済み';
@@ -223,7 +222,6 @@
               alert('送信失敗: ' + result.message);
             }
           } catch (err) {
-            console.error('送信時エラー:', err);
             alert('送信時エラー: ' + err.message);
           }
         }
@@ -231,24 +229,23 @@
     });
 
     backBtn.addEventListener('click', () => {
-      const parentContainer = card.closest('.mode-container');
-      const mode = parentContainer.id === 'workload' ? 'workload' : 'inspection';
-
+      const isWorkload = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') || mainBtn.classList.contains('work-ended');
       if (state === 1) {
-        mainBtn.textContent = mode === 'workload' ? '待機中' : '検品中';
-        mainBtn.className = mode === 'workload' ? 'main-btn work-waiting' : 'main-btn inspect-waiting';
+        records[course].pop(); // remove 開始 or 終了
+        mainBtn.textContent = isWorkload ? '待機中' : '検品中';
+        mainBtn.className = isWorkload ? 'main-btn work-waiting' : 'main-btn inspect-waiting';
         backBtn.disabled = true;
         state = 0;
       } else if (state === 2) {
-        mainBtn.textContent = mode === 'workload' ? '作業中' : '送信待ち';
-        mainBtn.className = mode === 'workload' ? 'main-btn work-started' : 'main-btn inspect-ended';
+        records[course].pop(); // remove 終了
+        mainBtn.textContent = isWorkload ? '作業中' : '送信待ち';
+        mainBtn.className = isWorkload ? 'main-btn work-started' : 'main-btn inspect-ended';
         backBtn.disabled = false;
         state = 1;
       }
     });
   });
 
-  // 初期状態で積込モードを表示
   document.querySelector('.tab[data-mode="workload"]').click();
 })();
 </script>
