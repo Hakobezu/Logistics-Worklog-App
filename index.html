@@ -11,80 +11,51 @@
       padding: 0;
       transition: background-color 0.3s;
     }
-    h1 {
-      text-align: center;
-      margin: 20px 0;
-      color: #333;
-    }
+    h1 { text-align: center; margin: 20px 0; color: #333; }
     .tab-container {
-      display: flex;
-      justify-content: center;
-      background: #ddd;
+      display: flex; justify-content: center; background: #ddd;
     }
     .tab {
-      padding: 10px 30px;
-      cursor: pointer;
-      font-weight: bold;
-      border-bottom: 3px solid transparent;
-      user-select: none;
+      padding: 10px 30px; cursor: pointer; font-weight: bold;
+      border-bottom: 3px solid transparent; user-select: none;
     }
     .tab.active {
-      border-bottom: 3px solid #2196F3;
-      background: #fff;
+      border-bottom: 3px solid #2196F3; background: #fff;
     }
     .course-card {
-      background-color: #fff;
-      border-radius: 10px;
-      margin: 15px auto;
-      padding: 15px;
-      max-width: 400px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      background-color: #fff; border-radius: 10px; margin: 15px auto;
+      padding: 15px; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      display: flex; align-items: center; justify-content: space-between;
       font-size: 1.3em;
     }
     .course-name {
-      font-weight: bold;
-      font-size: 1.6em;
+      font-weight: bold; font-size: 1.6em;
     }
     button.main-btn {
-      font-size: 1.2em;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      cursor: pointer;
+      font-size: 1.2em; padding: 10px 20px;
+      border: none; border-radius: 8px;
+      color: white; cursor: pointer;
     }
     button.main-btn.disabled {
-      background-color: #999 !important;
-      cursor: default;
+      background-color: #999 !important; cursor: default;
     }
     button.back-btn {
-      font-size: 1em;
-      padding: 8px 16px;
-      margin-left: 10px;
-      border: none;
-      border-radius: 8px;
-      background-color: #ccc;
-      color: #333;
-      cursor: pointer;
+      font-size: 1em; padding: 8px 16px; margin-left: 10px;
+      border: none; border-radius: 8px;
+      background-color: #ccc; color: #333; cursor: pointer;
     }
     button.back-btn:disabled {
-      background-color: #eee;
-      color: #999;
-      cursor: default;
+      background-color: #eee; color: #999; cursor: default;
     }
-
-    /* 積込モード色 */
     .work-waiting { background-color: #4dd0e1; }
     .work-started { background-color: #4CAF50; }
     .work-ended   { background-color: #f44336; }
+    .work-sending { background-color: #000000; }
     .work-sent    { background-color: #999999; }
 
-    /* 検品モード色 */
     .inspect-waiting { background-color: #ffb6c1; }
     .inspect-ended   { background-color: #f44336; }
+    .inspect-sending { background-color: #000000; }
     .inspect-done    { background-color: #999999; }
 
     .hidden { display: none; }
@@ -98,7 +69,6 @@
     <div class="tab" data-mode="inspection">📝 検品モード</div>
   </div>
 
-  <!-- 積込モード -->
   <div id="workload" class="mode-container">
     <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
@@ -117,7 +87,6 @@
     </div>
   </div>
 
-  <!-- 検品モード -->
   <div id="inspection" class="mode-container hidden">
     <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
@@ -138,14 +107,18 @@
 
 <script>
 (() => {
-  const records = {};  // 各コースごとに配列で管理
+  const records = {};
 
-  function uploadToDrive(recordList) {
+  async function uploadToDrive(recordList, filename, button) {
+    button.disabled = true;
+    button.innerText = '送信中';
+    button.style.backgroundColor = 'black';
+
     return new Promise((resolve, reject) => {
       google.script.run
-        .withSuccessHandler(resolve)
-        .withFailureHandler(reject)
-        .saveRecord(recordList);
+        .withSuccessHandler(response => resolve(response))
+        .withFailureHandler(error => reject(error))
+        .saveRecord(recordList, filename);
     });
   }
 
@@ -184,22 +157,20 @@
           records[course].push({ mode: '積込', course, action: '終了', timestamp: now });
           mainBtn.textContent = '送信待ち';
           mainBtn.className = 'main-btn work-ended';
-          backBtn.disabled = false;
           state = 2;
         } else if (state === 2) {
+          mainBtn.classList.add('disabled');
           try {
-            const result = await uploadToDrive(records[course]);
-            if (result.status === 'success') {
-              alert('Google Driveに送信しました！');
-              mainBtn.textContent = '送信済み';
-              mainBtn.className = 'main-btn work-sent disabled';
-              backBtn.disabled = true;
-              state = 3;
-            } else {
-              alert('送信失敗: ' + result.message);
-            }
+            const result = await uploadToDrive(records[course], `積込_${course}_${Date.now()}.json`, mainBtn);
+            mainBtn.textContent = '送信済み';
+            mainBtn.className = 'main-btn work-sent disabled';
+            backBtn.disabled = true;
+            state = 3;
           } catch (err) {
-            alert('送信時エラー: ' + err.message);
+            alert('送信エラー: ' + err.message);
+            mainBtn.textContent = '送信待ち';
+            mainBtn.className = 'main-btn work-ended';
+            mainBtn.classList.remove('disabled');
           }
         }
       } else {
@@ -210,19 +181,18 @@
           backBtn.disabled = false;
           state = 1;
         } else if (state === 1) {
+          mainBtn.classList.add('disabled');
           try {
-            const result = await uploadToDrive(records[course]);
-            if (result.status === 'success') {
-              alert('Google Driveに送信しました！');
-              mainBtn.textContent = '送信済み';
-              mainBtn.className = 'main-btn inspect-done disabled';
-              backBtn.disabled = true;
-              state = 2;
-            } else {
-              alert('送信失敗: ' + result.message);
-            }
+            const result = await uploadToDrive(records[course], `検品_${course}_${Date.now()}.json`, mainBtn);
+            mainBtn.textContent = '送信済み';
+            mainBtn.className = 'main-btn inspect-done disabled';
+            backBtn.disabled = true;
+            state = 2;
           } catch (err) {
-            alert('送信時エラー: ' + err.message);
+            alert('送信エラー: ' + err.message);
+            mainBtn.textContent = '送信待ち';
+            mainBtn.className = 'main-btn inspect-ended';
+            mainBtn.classList.remove('disabled');
           }
         }
       }
@@ -231,13 +201,13 @@
     backBtn.addEventListener('click', () => {
       const isWorkload = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') || mainBtn.classList.contains('work-ended');
       if (state === 1) {
-        records[course].pop(); // remove 開始 or 終了
+        records[course].pop();
         mainBtn.textContent = isWorkload ? '待機中' : '検品中';
         mainBtn.className = isWorkload ? 'main-btn work-waiting' : 'main-btn inspect-waiting';
         backBtn.disabled = true;
         state = 0;
       } else if (state === 2) {
-        records[course].pop(); // remove 終了
+        records[course].pop();
         mainBtn.textContent = isWorkload ? '作業中' : '送信待ち';
         mainBtn.className = isWorkload ? 'main-btn work-started' : 'main-btn inspect-ended';
         backBtn.disabled = false;
