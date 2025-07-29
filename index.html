@@ -1,223 +1,39 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>作業記録アプリ（検品・積込モード）</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      transition: background-color 0.3s;
-    }
-    h1 { text-align: center; margin: 20px 0; color: #333; }
-    .tab-container {
-      display: flex; justify-content: center; background: #ddd;
-    }
-    .tab {
-      padding: 10px 30px; cursor: pointer; font-weight: bold;
-      border-bottom: 3px solid transparent; user-select: none;
-    }
-    .tab.active {
-      border-bottom: 3px solid #2196F3; background: #fff;
-    }
-    .course-card {
-      background-color: #fff; border-radius: 10px; margin: 15px auto;
-      padding: 15px; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 1.3em;
-    }
-    .course-name {
-      font-weight: bold; font-size: 1.6em;
-    }
-    button.main-btn {
-      font-size: 1.2em; padding: 10px 20px;
-      border: none; border-radius: 8px;
-      color: white; cursor: pointer;
-    }
-    button.main-btn.disabled {
-      background-color: #999 !important; cursor: default;
-    }
-    button.back-btn {
-      font-size: 1em; padding: 8px 16px; margin-left: 10px;
-      border: none; border-radius: 8px;
-      background-color: #ccc; color: #333; cursor: pointer;
-    }
-    button.back-btn:disabled {
-      background-color: #eee; color: #999; cursor: default;
-    }
-    .work-waiting { background-color: #4dd0e1; }
-    .work-started { background-color: #4CAF50; }
-    .work-ended   { background-color: #f44336; }
-    .work-sending { background-color: #000000; }
-    .work-sent    { background-color: #999999; }
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index');
+}
 
-    .inspect-waiting { background-color: #ffb6c1; }
-    .inspect-ended   { background-color: #f44336; }
-    .inspect-sending { background-color: #000000; }
-    .inspect-done    { background-color: #999999; }
+function saveRecord(records) {
+  try {
+    if (!records || records.length === 0) {
+      return { status: 'error', message: 'データが空です' };
+    }
 
-    .hidden { display: none; }
-  </style>
-</head>
-<body>
-  <h1>作業記録アプリ（検品・積込モード）</h1>
+    const folder = DriveApp.getFoldersByName('作業記録').hasNext()
+      ? DriveApp.getFoldersByName('作業記録').next()
+      : DriveApp.createFolder('作業記録');
 
-  <div class="tab-container">
-    <div class="tab active" data-mode="workload">📦 積込モード</div>
-    <div class="tab" data-mode="inspection">📝 検品モード</div>
-  </div>
+    if (records.length === 1) {
+      // 検品モード用（常に1レコード）
+      const record = records[0];
+      const timePart = new Date(record.timestamp).toISOString().replace(/[:.]/g, '-');
+      const filename = `${timePart}_${record.course}_${record.mode}_end.json`;
 
-  <div id="workload" class="mode-container">
-    <div class="course-card" data-course="富山">
-      <div class="course-name">富山</div>
-      <button class="main-btn work-waiting">待機中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-    <div class="course-card" data-course="金沢">
-      <div class="course-name">金沢</div>
-      <button class="main-btn work-waiting">待機中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-    <div class="course-card" data-course="福井">
-      <div class="course-name">福井</div>
-      <button class="main-btn work-waiting">待機中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-  </div>
+      const blob = Utilities.newBlob(JSON.stringify(record, null, 2), 'application/json', filename);
+      folder.createFile(blob);
+    } else {
+      // 積込モード：開始・終了の2レコード
+      records.forEach(record => {
+        const timePart = new Date(record.timestamp).toISOString().replace(/[:.]/g, '-');
+        const suffix = record.action === '開始' ? '_start' : '_end';
+        const filename = `${timePart}_${record.course}_${record.mode}${suffix}.json`;
 
-  <div id="inspection" class="mode-container hidden">
-    <div class="course-card" data-course="富山">
-      <div class="course-name">富山</div>
-      <button class="main-btn inspect-waiting">検品中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-    <div class="course-card" data-course="金沢">
-      <div class="course-name">金沢</div>
-      <button class="main-btn inspect-waiting">検品中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-    <div class="course-card" data-course="福井">
-      <div class="course-name">福井</div>
-      <button class="main-btn inspect-waiting">検品中</button>
-      <button class="back-btn" disabled>↩ 戻る</button>
-    </div>
-  </div>
+        const blob = Utilities.newBlob(JSON.stringify(record, null, 2), 'application/json', filename);
+        folder.createFile(blob);
+      });
+    }
 
-<script>
-(() => {
-  const records = {};
-
-  async function uploadToDrive(recordList, filename, button) {
-    button.disabled = true;
-    button.innerText = '送信中';
-    button.style.backgroundColor = 'black';
-
-    return new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler(response => resolve(response))
-        .withFailureHandler(error => reject(error))
-        .saveRecord(recordList, filename);
-    });
+    return { status: 'success' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
   }
-
-  const tabs = document.querySelectorAll('.tab');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      document.querySelectorAll('.mode-container').forEach(mc => mc.classList.add('hidden'));
-      document.getElementById(tab.dataset.mode).classList.remove('hidden');
-      document.body.style.backgroundColor = (tab.dataset.mode === 'inspection') ? '#ffe4e1' : '#e0f7fa';
-    });
-  });
-
-  const courseCards = document.querySelectorAll('.course-card');
-  courseCards.forEach(card => {
-    const course = card.dataset.course;
-    const mainBtn = card.querySelector('.main-btn');
-    const backBtn = card.querySelector('.back-btn');
-    let state = 0;
-    records[course] = [];
-
-    mainBtn.addEventListener('click', async () => {
-      if (mainBtn.classList.contains('disabled')) return;
-      const now = new Date().toISOString();
-      const isWorkload = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') || mainBtn.classList.contains('work-ended');
-
-      if (isWorkload) {
-        if (state === 0) {
-          records[course].push({ mode: '積込', course, action: '開始', timestamp: now });
-          mainBtn.textContent = '作業中';
-          mainBtn.className = 'main-btn work-started';
-          backBtn.disabled = false;
-          state = 1;
-        } else if (state === 1) {
-          records[course].push({ mode: '積込', course, action: '終了', timestamp: now });
-          mainBtn.textContent = '送信待ち';
-          mainBtn.className = 'main-btn work-ended';
-          state = 2;
-        } else if (state === 2) {
-          mainBtn.classList.add('disabled');
-          try {
-            const result = await uploadToDrive(records[course], `積込_${course}_${Date.now()}.json`, mainBtn);
-            mainBtn.textContent = '送信済み';
-            mainBtn.className = 'main-btn work-sent disabled';
-            backBtn.disabled = true;
-            state = 3;
-          } catch (err) {
-            alert('送信エラー: ' + err.message);
-            mainBtn.textContent = '送信待ち';
-            mainBtn.className = 'main-btn work-ended';
-            mainBtn.classList.remove('disabled');
-          }
-        }
-      } else {
-        if (state === 0) {
-          records[course].push({ mode: '検品', course, action: '終了', timestamp: now });
-          mainBtn.textContent = '送信待ち';
-          mainBtn.className = 'main-btn inspect-ended';
-          backBtn.disabled = false;
-          state = 1;
-        } else if (state === 1) {
-          mainBtn.classList.add('disabled');
-          try {
-            const result = await uploadToDrive(records[course], `検品_${course}_${Date.now()}.json`, mainBtn);
-            mainBtn.textContent = '送信済み';
-            mainBtn.className = 'main-btn inspect-done disabled';
-            backBtn.disabled = true;
-            state = 2;
-          } catch (err) {
-            alert('送信エラー: ' + err.message);
-            mainBtn.textContent = '送信待ち';
-            mainBtn.className = 'main-btn inspect-ended';
-            mainBtn.classList.remove('disabled');
-          }
-        }
-      }
-    });
-
-    backBtn.addEventListener('click', () => {
-      const isWorkload = mainBtn.classList.contains('work-waiting') || mainBtn.classList.contains('work-started') || mainBtn.classList.contains('work-ended');
-      if (state === 1) {
-        records[course].pop();
-        mainBtn.textContent = isWorkload ? '待機中' : '検品中';
-        mainBtn.className = isWorkload ? 'main-btn work-waiting' : 'main-btn inspect-waiting';
-        backBtn.disabled = true;
-        state = 0;
-      } else if (state === 2) {
-        records[course].pop();
-        mainBtn.textContent = isWorkload ? '作業中' : '送信待ち';
-        mainBtn.className = isWorkload ? 'main-btn work-started' : 'main-btn inspect-ended';
-        backBtn.disabled = false;
-        state = 1;
-      }
-    });
-  });
-
-  document.querySelector('.tab[data-mode="workload"]').click();
-})();
-</script>
-</body>
-</html>
+}
