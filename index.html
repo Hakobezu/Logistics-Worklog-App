@@ -1,39 +1,211 @@
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index');
-}
-
-function saveRecord(records) {
-  try {
-    if (!records || records.length === 0) {
-      return { status: 'error', message: 'データが空です' };
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>作業記録アプリ（検品・積込モード）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s;
     }
 
-    const folder = DriveApp.getFoldersByName('作業記録').hasNext()
-      ? DriveApp.getFoldersByName('作業記録').next()
-      : DriveApp.createFolder('作業記録');
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+      color: #333;
+    }
 
-    if (records.length === 1) {
-      // 検品モード用（常に1レコード）
-      const record = records[0];
-      const timePart = new Date(record.timestamp).toISOString().replace(/[:.]/g, '-');
-      const filename = `${timePart}_${record.course}_${record.mode}_end.json`;
+    .tab-container {
+      display: flex;
+      justify-content: center;
+      background: #ddd;
+    }
 
-      const blob = Utilities.newBlob(JSON.stringify(record, null, 2), 'application/json', filename);
-      folder.createFile(blob);
-    } else {
-      // 積込モード：開始・終了の2レコード
-      records.forEach(record => {
-        const timePart = new Date(record.timestamp).toISOString().replace(/[:.]/g, '-');
-        const suffix = record.action === '開始' ? '_start' : '_end';
-        const filename = `${timePart}_${record.course}_${record.mode}${suffix}.json`;
+    .tab {
+      padding: 10px 30px;
+      cursor: pointer;
+      font-weight: bold;
+      border-bottom: 3px solid transparent;
+      user-select: none;
+    }
 
-        const blob = Utilities.newBlob(JSON.stringify(record, null, 2), 'application/json', filename);
-        folder.createFile(blob);
+    .tab.active {
+      border-bottom: 3px solid #2196F3;
+      background: #fff;
+    }
+
+    .course-card {
+      background-color: #fff;
+      border-radius: 10px;
+      margin: 15px auto;
+      padding: 15px;
+      max-width: 400px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 1.3em;
+    }
+
+    .course-name {
+      font-weight: bold;
+      font-size: 1.6em;
+    }
+
+    button.main-btn {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+    }
+
+    button.main-btn.disabled {
+      background-color: #999 !important;
+      cursor: default;
+    }
+
+    /* 状態別カラー */
+    .dock-start    { background-color: #1976d2; } /* 接岸：青 */
+    .dock-end      { background-color: #f44336; } /* 離岸：赤 */
+    .inspect-start { background-color: #388e3c; } /* 検品終了：濃い緑 */
+    .btn-sending   { background-color: #000000; } /* 送信中：黒 */
+    .btn-done      { background-color: #999999; } /* 完了：グレー */
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>作業記録アプリ（検品・積込モード）</h1>
+
+  <div class="tab-container">
+    <div class="tab active" data-mode="workload">📦 積込モード</div>
+    <div class="tab" data-mode="inspection">📝 検品モード</div>
+  </div>
+
+  <div id="workload" class="mode-container">
+    <div class="course-card" data-course="富山">
+      <div class="course-name">富山</div>
+      <button class="main-btn">接岸</button>
+    </div>
+    <div class="course-card" data-course="金沢">
+      <div class="course-name">金沢</div>
+      <button class="main-btn">接岸</button>
+    </div>
+    <div class="course-card" data-course="福井">
+      <div class="course-name">福井</div>
+      <button class="main-btn">接岸</button>
+    </div>
+  </div>
+
+  <div id="inspection" class="mode-container hidden">
+    <div class="course-card" data-course="富山">
+      <div class="course-name">富山</div>
+      <button class="main-btn">検品終了</button>
+    </div>
+    <div class="course-card" data-course="金沢">
+      <div class="course-name">金沢</div>
+      <button class="main-btn">検品終了</button>
+    </div>
+    <div class="course-card" data-course="福井">
+      <div class="course-name">福井</div>
+      <button class="main-btn">検品終了</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const records = {
+        workload: { 富山: [], 金沢: [], 福井: [] },
+        inspection: { 富山: [], 金沢: [], 福井: [] }
+      };
+
+      function setButtonState(button, text, className, disabled = false) {
+        button.textContent = text;
+        button.className = 'main-btn ' + className;
+        button.disabled = disabled;
+        if (disabled) {
+          button.classList.add('disabled');
+        }
+      }
+
+      async function uploadToDrive(recordList, button) {
+        setButtonState(button, '送信中', 'btn-sending', true);
+
+        await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(() => {
+              setButtonState(button, '終了', 'btn-done', true);
+              resolve();
+            })
+            .withFailureHandler(err => {
+              alert('送信エラー: ' + err.message);
+              location.reload();
+            })
+            .saveRecord(recordList);
+        });
+      }
+
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          document.querySelectorAll('.mode-container').forEach(mc => mc.classList.add('hidden'));
+          document.getElementById(tab.dataset.mode).classList.remove('hidden');
+          document.body.style.backgroundColor = (tab.dataset.mode === 'inspection') ? '#fff8dc' : '#e0f7fa';
+        });
       });
-    }
 
-    return { status: 'success' };
-  } catch (e) {
-    return { status: 'error', message: e.toString() };
-  }
-}
+      document.querySelectorAll('.course-card').forEach(card => {
+        const course = card.dataset.course;
+        const button = card.querySelector('.main-btn');
+        let state = 0;
+
+        if (card.parentElement.id === 'workload') {
+          // 積込モード
+          setButtonState(button, '接岸', 'dock-start');
+
+          button.addEventListener('click', async () => {
+            if (button.disabled) return;
+
+            const now = new Date().toISOString();
+            const rec = records.workload[course];
+
+            if (state === 0) {
+              rec.push({ mode: '積込', course, action: '接岸', timestamp: now });
+              await uploadToDrive([rec[0]], button);
+              setButtonState(button, '離岸', 'dock-end');
+              state = 1;
+            } else if (state === 1) {
+              const endTime = new Date().toISOString();
+              rec.push({ mode: '積込', course, action: '離岸', timestamp: endTime });
+              await uploadToDrive([rec[1]], button);
+              state = 2;
+            }
+          });
+
+        } else {
+          // 検品モード
+          setButtonState(button, '検品終了', 'inspect-start');
+
+          button.addEventListener('click', async () => {
+            if (button.disabled) return;
+
+            const now = new Date().toISOString();
+            const rec = records.inspection[course];
+            rec.push({ mode: '検品', course, action: '検品終了', timestamp: now });
+            await uploadToDrive(rec, button);
+          });
+        }
+      });
+
+      // 初期表示：積込モード
+      document.querySelector('.tab[data-mode="workload"]').click();
+    })();
+  </script>
+</body>
+</html>
