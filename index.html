@@ -134,21 +134,27 @@
       }
 
       async function uploadToDrive(recordList, button) {
-        setButtonState(button, '送信中', 'btn-sending', true);
+  setButtonState(button, '送信中', 'btn-sending', true);
 
-        await new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(() => {
-              setButtonState(button, '終了', 'btn-done', true);
-              resolve();
-            })
-            .withFailureHandler(err => {
-              alert('送信エラー: ' + err.message);
-              location.reload();
-            })
-            .saveRecord(recordList);
-        });
-      }
+  await new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result && result.status === 'success') {
+          setButtonState(button, '終了', 'btn-done', true);
+          resolve();
+        } else {
+          alert('送信エラー: ' + (result.message || '不明なエラー'));
+          location.reload();
+        }
+      })
+      .withFailureHandler(err => {
+        alert('送信エラー: ' + (err && err.message ? err.message : '不明な例外'));
+        location.reload();
+      })
+      .saveRecord(recordList);
+  });
+}
+
 
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
