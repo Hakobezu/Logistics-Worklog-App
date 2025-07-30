@@ -5,31 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>作業記録アプリ（検品・積込モード）</title>
   <style>
+  html {
+  font-size: clamp(16px, 6vw, 40px); /* ← 最大40pxまで許可！ */
+  }
+
+
     body {
       font-family: sans-serif;
       margin: 0;
       padding: 0;
       transition: background-color 0.3s;
+      background-color: #e0f7fa;
     }
 
     h1 {
       text-align: center;
-      margin: 20px 0;
+      margin: 1em 0 0.5em;
       color: #333;
+      font-size: 1.5em;
     }
 
     .tab-container {
       display: flex;
       justify-content: center;
       background: #ddd;
+      flex-wrap: wrap;
     }
 
     .tab {
-      padding: 10px 30px;
+      padding: 0.8em 2em;
       cursor: pointer;
       font-weight: bold;
       border-bottom: 3px solid transparent;
       user-select: none;
+      font-size: 1em;
     }
 
     .tab.active {
@@ -37,32 +46,45 @@
       background: #fff;
     }
 
-    .course-card {
-      background-color: #fff;
-      border-radius: 10px;
-      margin: 15px auto;
-      padding: 15px;
-      max-width: 400px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 1.3em;
+    .mode-container {
+      padding: 1em;
     }
 
-    .course-name {
-      font-weight: bold;
-      font-size: 1.6em;
-    }
+  .course-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2em 1em;       /* 上下に余白追加 */
+  margin: 1em 0;            /* カード間にもゆとり */
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+}
 
-    button.main-btn {
-      font-size: 1.2em;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      cursor: pointer;
-    }
+.course-name {
+  font-size: 3em;
+  font-weight: bold;
+  line-height: 1.1;
+  max-width: 65%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+button.main-btn {
+  font-size: 1.6em;
+  padding: 0.8em 1em;
+  width: 8em;
+  height: 3.2em;           /* ← ボタン高くして押しやすく */
+  border: none;
+  border-radius: 12px;
+  color: white;
+  background-color: #1976d2;
+  cursor: pointer;
+  flex-shrink: 0;
+  text-align: center;
+}
+
 
     button.main-btn.disabled {
       background-color: #999 !important;
@@ -70,11 +92,11 @@
     }
 
     /* 状態別カラー */
-    .dock-start    { background-color: #1976d2; } /* 接岸：青 */
-    .dock-end      { background-color: #f44336; } /* 離岸：赤 */
-    .inspect-start { background-color: #388e3c; } /* 検品終了：濃い緑 */
-    .btn-sending   { background-color: #000000; } /* 送信中：黒 */
-    .btn-done      { background-color: #999999; } /* 完了：グレー */
+    .dock-start    { background-color: #1976d2; }
+    .dock-end      { background-color: #f44336; }
+    .inspect-start { background-color: #388e3c; }
+    .btn-sending   { background-color: #000000; }
+    .btn-done      { background-color: #999999; }
 
     .hidden { display: none; }
   </style>
@@ -134,27 +156,26 @@
       }
 
       async function uploadToDrive(recordList, button) {
-  setButtonState(button, '送信中', 'btn-sending', true);
+        setButtonState(button, '送信中', 'btn-sending', true);
 
-  await new Promise((resolve, reject) => {
-    google.script.run
-      .withSuccessHandler((result) => {
-        if (result && result.status === 'success') {
-          setButtonState(button, '終了', 'btn-done', true);
-          resolve();
-        } else {
-          alert('送信エラー: ' + (result.message || '不明なエラー'));
-          location.reload();
-        }
-      })
-      .withFailureHandler(err => {
-        alert('送信エラー: ' + (err && err.message ? err.message : '不明な例外'));
-        location.reload();
-      })
-      .saveRecord(recordList);
-  });
-}
-
+        await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler((result) => {
+              if (result && result.status === 'success') {
+                setButtonState(button, '終了', 'btn-done', true);
+                resolve();
+              } else {
+                alert('送信エラー: ' + (result.message || '不明なエラー'));
+                location.reload();
+              }
+            })
+            .withFailureHandler(err => {
+              alert('送信エラー: ' + (err && err.message ? err.message : '不明な例外'));
+              location.reload();
+            })
+            .saveRecord(recordList);
+        });
+      }
 
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -172,7 +193,6 @@
         let state = 0;
 
         if (card.parentElement.id === 'workload') {
-          // 積込モード
           setButtonState(button, '接岸', 'dock-start');
 
           button.addEventListener('click', async () => {
@@ -195,7 +215,6 @@
           });
 
         } else {
-          // 検品モード
           setButtonState(button, '検品終了', 'inspect-start');
 
           button.addEventListener('click', async () => {
@@ -209,9 +228,10 @@
         }
       });
 
-      // 初期表示：積込モード
       document.querySelector('.tab[data-mode="workload"]').click();
     })();
   </script>
 </body>
 </html>
+
+
