@@ -91,6 +91,10 @@ button.main-btn {
       cursor: default;
     }
 
+    button.main-btn.dock-end.disabled {
+    background-color: #f44336 !important;
+    }
+
     /* 状態別カラー */
     .dock-start    { background-color: #1976d2; }
     .dock-end      { background-color: #f44336; }
@@ -205,6 +209,7 @@ button.main-btn {
               rec.push({ mode: '積込', course, action: '接岸', timestamp: now });
               await uploadToDrive([rec[0]], button);
               setButtonState(button, '離岸', 'dock-end');
+              button.classList.add('disabled');
               state = 1;
             } else if (state === 1) {
               const endTime = new Date().toISOString();
@@ -233,5 +238,3 @@ button.main-btn {
   </script>
 </body>
 </html>
-
-
