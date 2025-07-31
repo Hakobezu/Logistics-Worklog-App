@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>作業記録アプリ（検品・積込モード）</title>
   <style>
-  html {
-  font-size: clamp(16px, 6vw, 40px); /* ← 最大40pxまで許可！ */
-  }
-
-
+    html {
+      font-size: clamp(16px, 6vw, 40px);
+    }
     body {
       font-family: sans-serif;
       margin: 0;
@@ -17,21 +15,18 @@
       transition: background-color 0.3s;
       background-color: #e0f7fa;
     }
-
     h1 {
       text-align: center;
       margin: 1em 0 0.5em;
       color: #333;
       font-size: 1.5em;
     }
-
     .tab-container {
       display: flex;
       justify-content: center;
       background: #ddd;
       flex-wrap: wrap;
     }
-
     .tab {
       padding: 0.8em 2em;
       cursor: pointer;
@@ -40,79 +35,66 @@
       user-select: none;
       font-size: 1em;
     }
-
     .tab.active {
       border-bottom: 3px solid #2196F3;
       background: #fff;
     }
-
     .mode-container {
       padding: 1em;
     }
-
-  .course-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2em 1em;       /* 上下に余白追加 */
-  margin: 1em 0;            /* カード間にもゆとり */
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.course-name {
-  font-size: 3em;
-  font-weight: bold;
-  line-height: 1.1;
-  max-width: 65%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-button.main-btn {
-  font-size: 1.6em;
-  padding: 0.8em 1em;
-  width: 8em;
-  height: 3.2em;           /* ← ボタン高くして押しやすく */
-  border: none;
-  border-radius: 12px;
-  color: white;
-  background-color: #1976d2;
-  cursor: pointer;
-  flex-shrink: 0;
-  text-align: center;
-}
-
-
+    .course-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2em 1em;
+      margin: 1em 0;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .course-name {
+      font-size: 2.4em;
+      font-weight: bold;
+      line-height: 1.1;
+      max-width: 65%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    button.main-btn {
+      font-size: 1.6em;
+      padding: 0.8em 1em;
+      width: 6em;
+      height: 3.2em;
+      border: none;
+      border-radius: 12px;
+      color: white;
+      background-color: #1976d2;
+      cursor: pointer;
+      flex-shrink: 0;
+      text-align: center;
+    }
     button.main-btn.disabled {
       background-color: #999 !important;
       cursor: default;
     }
-
-    button.main-btn.dock-end.disabled {
-    background-color: #f44336 !important;
+    button.main-btn.dock-end:not(.disabled) {
+      background-color: #f44336;
     }
-
-    /* 状態別カラー */
     .dock-start    { background-color: #1976d2; }
     .dock-end      { background-color: #f44336; }
     .inspect-start { background-color: #388e3c; }
     .btn-sending   { background-color: #000000; }
     .btn-done      { background-color: #999999; }
-
     .hidden { display: none; }
   </style>
 </head>
 <body>
   <h1>作業記録アプリ（検品・積込モード）</h1>
-
   <div class="tab-container">
     <div class="tab active" data-mode="workload">📦 積込モード</div>
     <div class="tab" data-mode="inspection">📝 検品モード</div>
   </div>
-
   <div id="workload" class="mode-container">
     <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
@@ -127,7 +109,6 @@ button.main-btn {
       <button class="main-btn">接岸</button>
     </div>
   </div>
-
   <div id="inspection" class="mode-container hidden">
     <div class="course-card" data-course="富山">
       <div class="course-name">富山</div>
@@ -142,7 +123,6 @@ button.main-btn {
       <button class="main-btn">検品終了</button>
     </div>
   </div>
-
   <script>
     (() => {
       const records = {
@@ -154,14 +134,11 @@ button.main-btn {
         button.textContent = text;
         button.className = 'main-btn ' + className;
         button.disabled = disabled;
-        if (disabled) {
-          button.classList.add('disabled');
-        }
+        if (disabled) button.classList.add('disabled');
       }
 
       async function uploadToDrive(recordList, button) {
         setButtonState(button, '送信中', 'btn-sending', true);
-
         await new Promise((resolve, reject) => {
           google.script.run
             .withSuccessHandler((result) => {
@@ -181,8 +158,23 @@ button.main-btn {
         });
       }
 
+      function setupLongPress(el, callback, duration = 600) {
+        let timer;
+        const start = () => {
+          if (el.disabled) return;
+          timer = setTimeout(callback, duration);
+        };
+        const cancel = () => clearTimeout(timer);
+        el.addEventListener('mousedown', start);
+        el.addEventListener('touchstart', start);
+        el.addEventListener('mouseup', cancel);
+        el.addEventListener('mouseleave', cancel);
+        el.addEventListener('touchend', cancel);
+        el.addEventListener('touchcancel', cancel);
+      }
+
       document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
+        setupLongPress(tab, () => {
           document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
           document.querySelectorAll('.mode-container').forEach(mc => mc.classList.add('hidden'));
@@ -199,9 +191,8 @@ button.main-btn {
         if (card.parentElement.id === 'workload') {
           setButtonState(button, '接岸', 'dock-start');
 
-          button.addEventListener('click', async () => {
+          setupLongPress(button, async () => {
             if (button.disabled) return;
-
             const now = new Date().toISOString();
             const rec = records.workload[course];
 
@@ -209,22 +200,19 @@ button.main-btn {
               rec.push({ mode: '積込', course, action: '接岸', timestamp: now });
               await uploadToDrive([rec[0]], button);
               setButtonState(button, '離岸', 'dock-end');
-              button.classList.add('disabled');
               state = 1;
             } else if (state === 1) {
-              const endTime = new Date().toISOString();
-              rec.push({ mode: '積込', course, action: '離岸', timestamp: endTime });
+              rec.push({ mode: '積込', course, action: '離岸', timestamp: now });
               await uploadToDrive([rec[1]], button);
+              setButtonState(button, '終了', 'btn-done', true);
               state = 2;
             }
           });
 
         } else {
           setButtonState(button, '検品終了', 'inspect-start');
-
-          button.addEventListener('click', async () => {
+          setupLongPress(button, async () => {
             if (button.disabled) return;
-
             const now = new Date().toISOString();
             const rec = records.inspection[course];
             rec.push({ mode: '検品', course, action: '検品終了', timestamp: now });
@@ -233,7 +221,8 @@ button.main-btn {
         }
       });
 
-      document.querySelector('.tab[data-mode="workload"]').click();
+      document.querySelector('.tab[data-mode="workload"]').classList.add('active');
+      document.getElementById('workload').classList.remove('hidden');
     })();
   </script>
 </body>
