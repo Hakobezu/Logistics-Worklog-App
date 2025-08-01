@@ -59,7 +59,7 @@
       box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
     }
     .course-name {
-      font-size: 2.4em;
+      font-size: 2em;
       font-weight: bold;
       line-height: 1.1;
       max-width: 65%;
@@ -87,7 +87,6 @@
       -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
       outline: none;
     }
-
 
     button.main-btn.disabled {
       background-color: #999 !important;
@@ -194,6 +193,13 @@
         el.addEventListener('touchend', cancel);
         el.addEventListener('touchcancel', cancel);
       }
+
+      function showLeaveAlert(e) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+
+      window.addEventListener('beforeunload', showLeaveAlert);
 
       document.querySelectorAll('.tab').forEach(tab => {
         setupLongPress(tab, () => {
