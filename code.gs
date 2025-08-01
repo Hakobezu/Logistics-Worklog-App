@@ -14,11 +14,14 @@ function saveRecord(records) {
 
     records.forEach(record => {
       const now = new Date();
-      const timePart = now.toISOString().replace(/[:.]/g, '-');
-      const suffix = (record.mode === '検品')
-        ? '_end'
-        : (record.action === '接岸' ? '_start' : '_end');
-      const filename = `${timePart}_${record.course}_${record.mode}${suffix}.json`;
+      const timePart = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd_HH-mm-ss');
+
+const suffix = (record.mode === '検品')
+  ? '_end'
+  : (record.action === '接岸' ? '_start' : '_end');
+
+const filename = `${timePart}_${record.course}_${record.mode}${suffix}.json`;
+
 
       // ✅ 順番を course → mode → action → timestamp に統一
       const ordered = {
