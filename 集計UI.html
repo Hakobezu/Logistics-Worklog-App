@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>作業集計表示</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      color: #1976d2;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #1976d2;
+      color: white;
+    }
+    .corrected {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>作業記録集計</h1>
+  <button onclick="loadAggregation()">集計を開始</button>
+  <div id="result"></div>
+
+  <script>
+    function loadAggregation() {
+      document.getElementById("result").innerHTML = "<p>読み込み中...</p>";
+      google.script.run.withSuccessHandler(displayResult).runAggregation();
+    }
+
+    function displayResult(data) {
+      if (!data || data.length === 0) {
+        document.getElementById("result").innerHTML = "<p>データがありません。</p>";
+        return;
+      }
+
+      let html = `<table>
+        <tr>
+          <th>コース</th>
+          <th>接岸</th>
+          <th>検品終了</th>
+          <th>離岸</th>
+        </tr>`;
+
+      for (const row of data) {
+        html += `<tr>
+          <td>${row.course}</td>
+          <td>${row.接岸}</td>
+          <td>${row.検品終了}</td>
+          <td class="${row.補正 ? 'corrected' : ''}">${row.離岸} ${row.補正}</td>
+        </tr>`;
+      }
+
+      html += "</table>";
+      document.getElementById("result").innerHTML = html;
+    }
+  </script>
+</body>
+</html>
