@@ -3,32 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <title>作業集計表示</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    h1 {
-      color: #1976d2;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background-color: #1976d2;
-      color: white;
-    }
-    .corrected {
-      color: red;
-    }
-  </style>
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+  }
+  h1 {
+    color: #1976d2;
+  }
+  button {
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+    width: 25%; /* ✅ これを追加 */
+  }
+  th {
+    background-color: #1976d2;
+    color: white;
+  }
+  .corrected {
+    color: red;
+  }
+</style>
+
 </head>
 <body>
   <h1>作業記録集計</h1>
@@ -60,7 +71,7 @@
           <td>${row.course}</td>
           <td>${row.接岸}</td>
           <td>${row.検品終了}</td>
-          <td class="${row.補正 ? 'corrected' : ''}">${row.離岸} ${row.補正}</td>
+          <td>${row.離岸}</td>
         </tr>`;
       }
 
