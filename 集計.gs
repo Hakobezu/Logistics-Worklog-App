@@ -7,9 +7,19 @@ function runAggregation() {
 
   const courseList = [
     "南大阪","広島","岡山","宇和島","島根","東大阪","豊岡","豊中",
-    "松山","東予","高知","坂出","徳島","尾道","和歌山","金沢",
+    "松山","高知","坂出","徳島","尾道","和歌山","金沢",
     "富山","福井","神戸","西神戸","姫路","鶴見"
   ];
+
+  // 表示名のマッピング
+  const courseNameMap = {
+    "豊岡": "豊岡 丹波",
+    "和歌山": "和歌山 串本 海南",
+    "松山": "松山 東予",
+    "神戸": "神戸 淡路"
+  };
+
+  const excludeCourses = ["東予"]; // 表示から除外するコース名
 
   const earliestRecords = {};
   courseList.forEach(c => {
@@ -37,12 +47,11 @@ function runAggregation() {
         earliestRecords[course][action] = { ...content, timestamp: t };
       }
     } catch (e) {
-      // JSONが壊れている等は無視
       continue;
     }
   }
 
-  // 離岸が検品終了より早いときの補正
+  // 補正処理（ただしユーザーには見せない）
   for (const course of courseList) {
     const data = earliestRecords[course];
     if (data["検品終了"] && data["離岸"]) {
@@ -51,22 +60,27 @@ function runAggregation() {
       if (leave < inspectEnd) {
         const corrected = new Date(inspectEnd.getTime() + 60 * 1000);
         data["離岸"].timestamp = corrected;
-        data["離岸"].corrected = true;
+        // 補正フラグは記録しない（ユーザーに表示しないため）
       }
     }
   }
 
-  // 表データを返す
-  const result = courseList.map(course => {
-    const rec = earliestRecords[course];
-    return {
-      course,
-      接岸: formatTime(rec["接岸"]?.timestamp),
-      検品終了: formatTime(rec["検品終了"]?.timestamp),
-      離岸: formatTime(rec["離岸"]?.timestamp),
-      補正: rec["離岸"]?.corrected ? "※補正" : ""
-    };
-  });
+  const result = courseList
+    .filter(course => !excludeCourses.includes(course)) // 除外コースは出さない
+    .map(course => {
+      const rec = earliestRecords[course];
+
+      const berthed = roundUpTo5Minutes(rec["接岸"]?.timestamp);
+      const inspected = roundUpTo5Minutes(rec["検品終了"]?.timestamp);
+      const departed = roundUpTo5Minutes(rec["離岸"]?.timestamp);
+
+      return {
+        course: courseNameMap[course] || course,
+        接岸: formatTime(berthed),
+        検品終了: formatTime(inspected),
+        離岸: formatTime(departed)
+      };
+    });
 
   return result;
 }
@@ -77,3 +91,11 @@ function formatTime(date) {
   return Utilities.formatDate(d, "Asia/Tokyo", "HH:mm");
 }
 
+function roundUpTo5Minutes(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  const ms = d.getTime();
+  const interval = 5 * 60 * 1000;
+  const roundedMs = Math.ceil(ms / interval) * interval;
+  return new Date(roundedMs);
+}
