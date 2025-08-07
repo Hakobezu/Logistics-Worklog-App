@@ -3,43 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <title>作業集計表示</title>
-<style>
-  body {
-    font-family: sans-serif;
-    padding: 20px;
-  }
-  h1 {
-    color: #1976d2;
-  }
-  button {
-    background-color: #1976d2;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 4px;
-  }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    margin-top: 20px;
-  }
-  th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: center;
-    width: 25%; /* ✅ これを追加 */
-  }
-  th {
-    background-color: #1976d2;
-    color: white;
-  }
-  .corrected {
-    color: red;
-  }
-</style>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
 
+    h1 {
+      color: #1976d2;
+    }
+
+    button {
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 2px solid #999;
+      padding: 12px;
+    }
+
+    /* コース名の列 */
+    th:nth-child(1), td:nth-child(1) {
+      width: 40%;
+      text-align: center;      /* センタリング */
+      white-space: nowrap;     /* 改行防止 */
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    /* 他の3列 */
+    th:nth-child(n+2), td:nth-child(n+2) {
+      width: 20%;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    #result p {
+      font-size: 16px;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
   <h1>作業記録集計</h1>
