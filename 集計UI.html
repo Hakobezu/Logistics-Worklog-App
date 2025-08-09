@@ -34,6 +34,8 @@
       border: 2px solid #999;
       padding: 10px 14px;
       text-align: center;
+      width: 25%;  /* 4列均等幅に */
+      box-sizing: border-box; /* 幅計算の安定のため追加 */
     }
     #courseTable thead th {
       background: linear-gradient(135deg, #6ec1e4, #2a9df4);
@@ -51,7 +53,7 @@
       font-weight: 700;
       white-space: nowrap;
       text-align: center;
-      padding-left: 20px;
+      /* padding-left: 20px; 削除して均等に */
       font-size: 20px;
     }
 
@@ -107,6 +109,7 @@
       padding: 2px 0;
       word-break: break-all;
     }
+
   </style>
 </head>
 <body>
