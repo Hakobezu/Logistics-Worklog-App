@@ -32,7 +32,8 @@ function runAggregation(selectedDateStr) {
     "鶴見",
     "豊中",
     "東大阪",
-    "南大阪"
+    "南大阪",
+    "西淀川"
   ];
 
   const courseNameMap = {
