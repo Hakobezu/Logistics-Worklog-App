@@ -16,14 +16,20 @@ function saveRecord(records) {
       const now = new Date();
       const timePart = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd_HH-mm-ss');
 
-const suffix = (record.mode === '検品')
-  ? '_end'
-  : (record.action === '接岸' ? '_start' : '_end');
+      let filename = '';
+      if(record.mode === '検品'){
+        filename = `${timePart}_${record.course}_${record.mode}_end.json`;
+      } else if(record.mode === '積込'){
+        const suffix = record.action === '接岸' ? '_start' : '_end';
+        filename = `${timePart}_${record.course}_${record.mode}${suffix}.json`;
+      } else if(record.mode === '進捗'){
+        // 進捗は固定のファイル名フォーマット
+        filename = `${timePart}_${record.course}_荷揃_end.json`;
+      } else {
+        // その他は適当
+        filename = `${timePart}_${record.course}_${record.mode}.json`;
+      }
 
-const filename = `${timePart}_${record.course}_${record.mode}${suffix}.json`;
-
-
-      // ✅ 順番を course → mode → action → timestamp に統一
       const ordered = {
         course: record.course,
         mode: record.mode,
