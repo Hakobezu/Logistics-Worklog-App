@@ -5,88 +5,214 @@
   <title>作業集計表示</title>
   <style>
     body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f9f9f9; }
-    h1 { color: #1976d2; }
-    button { background-color: #1976d2; color: white; border: none; padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 4px; margin-left: 10px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; table-layout: fixed; }
-    th, td { border: 2px solid #999; padding: 12px; }
-    th:nth-child(1), td:nth-child(1) { width: 40%; text-align: center; white-space: nowrap; font-weight: bold; font-size: 18px; }
-    th:nth-child(n+2), td:nth-child(n+2) { width: 20%; font-size: 20px; font-weight: bold; text-align: center; }
-    tr:nth-child(even) { background-color: #f2f2f2; }
-    #result p { font-size: 16px; color: #555; }
-    #fileListContainer { margin-top: 30px; }
-    #fileListContainer h3 { color: #333; }
-    #fileList { max-height: 200px; overflow-y: auto; border: 1px solid #ccc; background: #fff; padding: 10px; font-size: 14px; line-height: 1.4; }
-    #fileList li { list-style: none; border-bottom: 1px solid #eee; padding: 2px 0; word-break: break-all; }
+    h1 { color: #1976d2; margin-bottom: 10px; }
+    button {
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-left: 10px;
+    }
+
+    /* コース集計テーブル */
+    #courseTable {
+      margin-top: 20px;
+      width: 100%;
+      border-collapse: collapse;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      border-radius: 6px;
+      overflow: hidden;
+      font-weight: 600;
+      font-size: 18px;
+      color: #0d2f61;
+      background-color: #f9fbff;
+    }
+    #courseTable th, #courseTable td {
+      border: 2px solid #999;
+      padding: 10px 14px;
+      text-align: center;
+    }
+    #courseTable thead th {
+      background: linear-gradient(135deg, #6ec1e4, #2a9df4);
+      color: white;
+      font-weight: 700;
+      font-size: 20px;
+    }
+    #courseTable tbody tr:nth-child(odd) {
+      background-color: #e6f0fb;
+    }
+    #courseTable tbody tr:nth-child(even) {
+      background-color: #f9fbff;
+    }
+    #courseTable td:first-child {
+      font-weight: 700;
+      white-space: nowrap;
+      text-align: center;
+      padding-left: 20px;
+      font-size: 20px;
+    }
+
+    /* 進捗モードテーブル */
+    #progressTable {
+      margin-top: 20px;
+      width: 320px;
+      border-collapse: collapse;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    #progressTable th, #progressTable td {
+      padding: 10px 14px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 18px;
+      color: #0d2f61;
+      border: 2px solid #999;
+    }
+    #progressTable thead th {
+      background: linear-gradient(135deg, #6ec1e4, #2a9df4);
+      color: white;
+    }
+    #progressTable tbody tr:nth-child(odd) {
+      background-color: #e6f0fb;
+    }
+    #progressTable tbody tr:nth-child(even) {
+      background-color: #f9fbff;
+    }
+
+    /* ファイルリスト */
+    #fileListContainer {
+      margin-top: 30px;
+    }
+    #fileListContainer h3 {
+      color: #333;
+      margin-bottom: 8px;
+    }
+    #fileList {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #fff;
+      padding: 10px;
+      font-size: 14px;
+      line-height: 1.4;
+      list-style: none;
+      margin: 0;
+    }
+    #fileList li {
+      border-bottom: 1px solid #eee;
+      padding: 2px 0;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
   <h1>作業記録集計</h1>
   <label>集計日: <input type="date" id="dateInput"></label>
   <button onclick="loadAggregation()">集計を開始</button>
+
+  <!-- コース集計結果 -->
   <div id="result"></div>
 
-  <!-- 抽出されたファイル名一覧を表示する場所 -->
+  <!-- 進捗モードテーブル -->
+  <table id="progressTable" style="display:none;">
+    <thead>
+      <tr><th>フロア</th><th>荷揃完了</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- 抽出されたファイル一覧 -->
   <div id="fileListContainer" style="display:none;">
     <h3>抽出されたファイル一覧（件数: <span id="fileCount"></span>）</h3>
     <ul id="fileList"></ul>
   </div>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      document.getElementById("dateInput").value = `${yyyy}-${mm}-${dd}`;
-    });
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById("dateInput").value = `${yyyy}-${mm}-${dd}`;
+  });
 
-    function loadAggregation() {
-      document.getElementById("result").innerHTML = "<p>読み込み中...</p>";
+  function loadAggregation() {
+    document.getElementById("result").innerHTML = "<p>読み込み中...</p>";
+    document.getElementById("progressTable").style.display = "none";
+    document.getElementById("fileListContainer").style.display = "none";
+
+    const selectedDate = document.getElementById("dateInput").value || null;
+
+    google.script.run.withSuccessHandler(displayResult).runAggregation(selectedDate);
+  }
+
+  function displayResult(data) {
+    if (!data || !data.result || data.result.length === 0) {
+      document.getElementById("result").innerHTML = "<p>データがありません。</p>";
+      document.getElementById("progressTable").style.display = "none";
       document.getElementById("fileListContainer").style.display = "none";
-      const selectedDate = document.getElementById("dateInput").value || null;
-
-      google.script.run.withSuccessHandler(displayResult).runAggregation(selectedDate);
+      return;
     }
 
-    function displayResult(data) {
-      if (!data || !data.result || data.result.length === 0) {
-        document.getElementById("result").innerHTML = "<p>データがありません。</p>";
-        document.getElementById("fileListContainer").style.display = "none";
-        return;
-      }
-
-      // 集計表表示
-      let html = `<table>
-        <tr><th>コース</th><th>接岸</th><th>検品終了</th><th>離岸</th></tr>`;
-      for (const row of data.result) {
-        html += `<tr>
-          <td>${row.course}</td>
-          <td>${row.接岸 || ""}</td>
-          <td>${row.検品終了 || ""}</td>
-          <td>${row.離岸 || ""}</td>
-        </tr>`;
-      }
-      html += "</table>";
-      document.getElementById("result").innerHTML = html;
-
-      // ファイル名一覧表示
-      const fileListContainer = document.getElementById("fileListContainer");
-      const fileList = document.getElementById("fileList");
-      const fileCount = document.getElementById("fileCount");
-
-      fileList.innerHTML = "";
-      if (data.fileNames && data.fileNames.length > 0) {
-        data.fileNames.forEach(name => {
-          const li = document.createElement("li");
-          li.textContent = name;
-          fileList.appendChild(li);
-        });
-        fileCount.textContent = data.fileNames.length;
-        fileListContainer.style.display = "block";
-      } else {
-        fileListContainer.style.display = "none";
-      }
+    // コース集計テーブル表示（id追加）
+    let html = `<table id="courseTable">
+      <thead>
+        <tr><th>コース</th><th>接岸</th><th>検品終了</th><th>離岸</th></tr>
+      </thead>
+      <tbody>`;
+    for (const row of data.result) {
+      html += `<tr>
+        <td>${row.course}</td>
+        <td>${row.接岸 || ""}</td>
+        <td>${row.検品終了 || ""}</td>
+        <td>${row.離岸 || ""}</td>
+      </tr>`;
     }
-  </script>
+    html += "</tbody></table>";
+    document.getElementById("result").innerHTML = html;
+
+    // 進捗モードテーブル表示
+    const progressTable = document.getElementById("progressTable");
+    const tbody = progressTable.querySelector("tbody");
+    tbody.innerHTML = "";
+    if (data.progressResult && data.progressResult.length > 0) {
+      data.progressResult.forEach(rec => {
+        const tr = document.createElement("tr");
+        const tdFloor = document.createElement("td");
+        tdFloor.textContent = rec.floor;
+        const tdTime = document.createElement("td");
+        tdTime.textContent = rec.荷揃完了 || "";
+        tr.appendChild(tdFloor);
+        tr.appendChild(tdTime);
+        tbody.appendChild(tr);
+      });
+      progressTable.style.display = "table";
+    } else {
+      progressTable.style.display = "none";
+    }
+
+    // ファイル名一覧表示
+    const fileListContainer = document.getElementById("fileListContainer");
+    const fileList = document.getElementById("fileList");
+    const fileCount = document.getElementById("fileCount");
+
+    fileList.innerHTML = "";
+    if (data.fileNames && data.fileNames.length > 0) {
+      data.fileNames.forEach(name => {
+        const li = document.createElement("li");
+        li.textContent = name;
+        fileList.appendChild(li);
+      });
+      fileCount.textContent = data.fileNames.length;
+      fileListContainer.style.display = "block";
+    } else {
+      fileListContainer.style.display = "none";
+    }
+  }
+</script>
 </body>
 </html>
